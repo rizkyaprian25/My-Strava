@@ -471,6 +471,75 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
             }),
+            const SizedBox(height: 24),
+
+            // Bagian Arsitektur & Status Ekosistem Bebas API Key
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.cardSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.accentGreen.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentGreen.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.verified,
+                            color: AppTheme.accentGreen, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Status: 100% Bebas API Key',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              'Arsitektur mandiri tanpa kartu kredit & biaya server',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white10, height: 1),
+                  const SizedBox(height: 12),
+                  _buildZeroApiRow('🗺️ Peta 4 Lapisan',
+                      'OpenStreetMap, Esri 3D, Carto Dark (Bebas Token)'),
+                  _buildZeroApiRow('🛰️ GPS & Elevasi',
+                      'Chip Satelit Native HP (Tanpa Google Maps API)'),
+                  _buildZeroApiRow('📍 Lokasi Otomatis',
+                      'Nominatim OSM & Offline Bounding Bounds'),
+                  _buildZeroApiRow('☀️ Cuaca Otomatis',
+                      'Open-Meteo Global Science API (Bebas Kunci)'),
+                  _buildZeroApiRow('💾 Penyimpanan Data',
+                      'Sandbox Dokumen Lokal JSON (Privasi Penuh 100%)'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -648,4 +717,36 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  Widget _buildZeroApiRow(String title, String desc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              desc,
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

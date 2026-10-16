@@ -17,6 +17,9 @@ class ActivityModel {
   final double elevationGainMeters; // Total kenaikan ketinggian (meter)
   final List<LocationPoint> routePoints; // Rangkaian titik trek koordinat
   final List<KmSplit> splits; // Pembagian waktu per kilometer
+  final String? locationName; // Nama kota/daerah (deteksi bebas API key)
+  final double? temperatureCelsius; // Suhu udara saat latihan (bebas API key)
+  final String? weatherCondition; // Kondisi cuaca (Cerah, Berawan, dsb)
 
   const ActivityModel({
     required this.id,
@@ -32,6 +35,9 @@ class ActivityModel {
     required this.elevationGainMeters,
     required this.routePoints,
     required this.splits,
+    this.locationName,
+    this.temperatureCelsius,
+    this.weatherCondition,
   });
 
   /// Jarak total dalam format kilometer (misal: 5.42 km).
@@ -61,6 +67,16 @@ class ActivityModel {
   /// Alias untuk formattedDuration.
   String get formattedDuration => durationFormatted;
 
+  /// Ringkasan cuaca terformat (misal: "28°C Cerah Berawan").
+  String? get weatherSummary {
+    if (temperatureCelsius != null && weatherCondition != null) {
+      return '${temperatureCelsius!.toStringAsFixed(0)}°C $weatherCondition';
+    } else if (temperatureCelsius != null) {
+      return '${temperatureCelsius!.toStringAsFixed(0)}°C';
+    }
+    return weatherCondition;
+  }
+
   /// Deserialisasi dari JSON.
   factory ActivityModel.fromJson(Map<String, dynamic> json) {
     return ActivityModel(
@@ -85,6 +101,9 @@ class ActivityModel {
               ?.map((e) => KmSplit.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      locationName: json['locationName'] as String?,
+      temperatureCelsius: (json['temperatureCelsius'] as num?)?.toDouble(),
+      weatherCondition: json['weatherCondition'] as String?,
     );
   }
 
@@ -104,6 +123,9 @@ class ActivityModel {
       'elevationGainMeters': elevationGainMeters,
       'routePoints': routePoints.map((e) => e.toJson()).toList(),
       'splits': splits.map((e) => e.toJson()).toList(),
+      'locationName': locationName,
+      'temperatureCelsius': temperatureCelsius,
+      'weatherCondition': weatherCondition,
     };
   }
 }

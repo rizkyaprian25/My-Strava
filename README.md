@@ -88,6 +88,21 @@ lib/
 
 ---
 
+## 🛡️ Arsitektur Zero-API-Key (100% Bebas API Key & Biaya Server)
+
+Aplikasi **My Strava** didesain dengan prinsip kemandirian penuh (*self-sufficient clean-room*). Anda **TIDAK PERLU** mendaftar akun Google Cloud, Mapbox, Strava Developer, ataupun memasukkan kartu kredit:
+
+| Komponen Fitur | Solusi Tanpa API Key My Strava | Layanan Komersial Biasa (Yang Dihindari) |
+|---|---|---|
+| **Peta & Citra Satelit** | Tile Layer Publik Bebas Token (OpenStreetMap, Esri Satellite 3D, Carto Dark, OpenTopoMap) | Google Maps SDK / Mapbox API (Berbayar) |
+| **GPS & Altimeter** | Chip Satelit Native GNSS Hardware HP (`geolocator` & Haversine on-device) | Google Elevation API (Berbayar) |
+| **Deteksi Kota & Lokasi** | OSM Nominatim & Offline City Bounding Box (`GeocodingService`) | Google Geocoding API (Berbayar) |
+| **Prakiraan Suhu & Cuaca** | Open-Meteo REST API (Sains Terbuka Global Bebas Kunci & Lisensi) | OpenWeatherMap API (Wajib Token) |
+| **Database & Riwayat** | Local Sandbox JSON Encapsulation (`path_provider` & `shared_preferences`) | Firebase Firestore / AWS Cloud |
+| **Format Berbagi / Ekspor** | Standar Internasional XML GPX 1.1 & Stiker PNG Transparan Ultra HD | Strava OAuth 2.0 Cloud Sync |
+
+---
+
 ## 🚀 Panduan Menjalankan & Membangun APK
 
 ### 1. Menjalankan di Mode Debug / Perangkat

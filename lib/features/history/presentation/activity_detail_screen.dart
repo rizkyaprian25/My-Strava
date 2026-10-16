@@ -336,6 +336,40 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                                 color: AppTheme.textSecondary,
                               ),
                             ),
+                            if (widget.activity.locationName != null ||
+                                widget.activity.weatherSummary != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  if (widget.activity.locationName != null) ...[
+                                    const Icon(Icons.location_on,
+                                        color: AppTheme.stravaOrange, size: 12),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      widget.activity.locationName!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppTheme.stravaOrange,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (widget.activity.weatherSummary != null) ...[
+                                    const Icon(Icons.wb_sunny_outlined,
+                                        color: Colors.amber, size: 12),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      widget.activity.weatherSummary!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),

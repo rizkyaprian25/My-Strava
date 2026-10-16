@@ -8,6 +8,8 @@ import 'package:my_strava/contracts/map_style.dart';
 import 'package:my_strava/contracts/personal_record.dart';
 import 'package:my_strava/contracts/segment_model.dart';
 import 'package:my_strava/contracts/sport_type.dart';
+import 'package:my_strava/core/services/geocoding_service.dart';
+import 'package:my_strava/core/services/weather_service.dart';
 import 'package:my_strava/core/utils/geo_calculator.dart';
 import 'package:my_strava/core/utils/gpx_exporter.dart';
 import 'package:my_strava/core/utils/route_gradient_helper.dart';
@@ -286,6 +288,62 @@ void main() {
       expect(elevationLines.length, equals(2));
     });
   });
+
+  group('Zero-API-Key Services Tests', () {
+    test('GeocodingService mengestimasi kota secara offline tanpa API key', () async {
+      // Koordinat Jakarta (-6.1754, 106.8272)
+      final jakarta = await GeocodingService.reverseGeocode(-6.1754, 106.8272);
+      expect(jakarta, isNotNull);
+      expect(jakarta, contains('Jakarta'));
+
+      // Koordinat Bandung (-6.9175, 107.6191)
+      final bandung = await GeocodingService.reverseGeocode(-6.9175, 107.6191);
+      expect(bandung, isNotNull);
+      expect(bandung, contains('Bandung'));
+    });
+
+    test('WeatherInfo memformat ringkasan cuaca dengan benar', () {
+      const weather = WeatherInfo(
+        temperatureCelsius: 28.4,
+        humidityPercent: 75,
+        conditionDescription: 'Cerah Berawan',
+      );
+
+      expect(weather.formattedSummary, equals('28°C Cerah Berawan'));
+    });
+
+    test('ActivityModel menyimpan field lokasi dan cuaca secara persisten', () {
+      final now = DateTime.now();
+      final activity = ActivityModel(
+        id: 'zero-api-act',
+        title: 'Lari Pagi di Jakarta',
+        sportType: SportType.run,
+        startTime: now,
+        durationSeconds: 1800,
+        distanceMeters: 5000.0,
+        calories: 320,
+        avgSpeedKmh: 10.0,
+        maxSpeedKmh: 12.0,
+        elevationGainMeters: 15.0,
+        routePoints: [],
+        splits: [],
+        locationName: 'Jakarta Pusat',
+        temperatureCelsius: 29.0,
+        weatherCondition: 'Cerah',
+      );
+
+      expect(activity.weatherSummary, equals('29°C Cerah'));
+
+      final json = activity.toJson();
+      final restored = ActivityModel.fromJson(json);
+
+      expect(restored.locationName, equals('Jakarta Pusat'));
+      expect(restored.temperatureCelsius, equals(29.0));
+      expect(restored.weatherCondition, equals('Cerah'));
+      expect(restored.weatherSummary, equals('29°C Cerah'));
+    });
+  });
 }
+
 
 

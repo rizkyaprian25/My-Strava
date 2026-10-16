@@ -3,6 +3,8 @@ import '../../../contracts/activity_model.dart';
 import '../../../contracts/km_split.dart';
 import '../../../contracts/location_point.dart';
 import '../../../contracts/sport_type.dart';
+import '../../../core/services/geocoding_service.dart';
+import '../../../core/services/weather_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/geo_calculator.dart';
 
@@ -35,6 +37,8 @@ class _SaveActivityDialogState extends State<SaveActivityDialog> {
   late TextEditingController _titleController;
   late TextEditingController _descController;
   late SportType _selectedSportType;
+  String? _detectedLocation;
+  WeatherInfo? _weatherInfo;
 
   @override
   void initState() {
@@ -42,6 +46,30 @@ class _SaveActivityDialogState extends State<SaveActivityDialog> {
     _selectedSportType = widget.initialSportType;
     _titleController = TextEditingController(text: _generateDefaultTitle());
     _descController = TextEditingController();
+    _fetchContextData();
+  }
+
+  Future<void> _fetchContextData() async {
+    if (widget.routePoints.isEmpty) return;
+    final startPt = widget.routePoints.first;
+
+    // Panggil geocoding dan cuaca secara paralel (100% bebas API key)
+    final results = await Future.wait([
+      GeocodingService.reverseGeocode(startPt.latitude, startPt.longitude),
+      WeatherService.fetchWeather(startPt.latitude, startPt.longitude),
+    ]);
+
+    if (!mounted) return;
+    final loc = results[0] as String?;
+    final weather = results[1] as WeatherInfo?;
+
+    setState(() {
+      _detectedLocation = loc;
+      _weatherInfo = weather;
+      if (loc != null && _titleController.text == _generateDefaultTitle()) {
+        _titleController.text = '${_generateDefaultTitle()} di $loc';
+      }
+    });
   }
 
   @override
@@ -234,7 +262,70 @@ class _SaveActivityDialogState extends State<SaveActivityDialog> {
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 16),
+            // Badge Lokasi & Cuaca Otomatis (100% Bebas API Key)
+            if (_detectedLocation != null || _weatherInfo != null) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (_detectedLocation != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.stravaOrange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.stravaOrange.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: AppTheme.stravaOrange, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            _detectedLocation!,
+                            style: const TextStyle(
+                              color: AppTheme.stravaOrange,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_weatherInfo != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.wb_sunny_outlined,
+                              color: Colors.amber, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            _weatherInfo!.formattedSummary,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // Form Judul
             const Text(
@@ -328,6 +419,9 @@ class _SaveActivityDialogState extends State<SaveActivityDialog> {
                         elevationGainMeters: widget.elevationGainMeters,
                         routePoints: widget.routePoints,
                         splits: _calculateSplits(),
+                        locationName: _detectedLocation,
+                        temperatureCelsius: _weatherInfo?.temperatureCelsius,
+                        weatherCondition: _weatherInfo?.conditionDescription,
                       );
                       Navigator.of(context).pop(newActivity);
                     },
