@@ -7,6 +7,7 @@ import '../../../contracts/activity_model.dart';
 import '../../../core/storage/activity_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/gpx_exporter.dart';
+import '../../../core/utils/share_card_dialog.dart';
 
 /// Layar rincian aktivitas lengkap: peta rute, metrik performa, tabel split KM, dan ekspor GPX.
 class ActivityDetailScreen extends StatelessWidget {
@@ -40,6 +41,17 @@ class ActivityDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(activity.title),
         actions: [
+          // Tombol Bagikan Kartu Visual Khas Strava
+          IconButton(
+            icon: const Icon(Icons.share_outlined, color: AppTheme.stravaOrange),
+            tooltip: 'Bagikan Kartu',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => ShareCardDialog(activity: activity),
+              );
+            },
+          ),
           // Tombol Ekspor GPX
           IconButton(
             icon: const Icon(Icons.file_download_outlined),

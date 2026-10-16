@@ -10,5 +10,6 @@ void main() {
     expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Rekam'), findsOneWidget);
     expect(find.text('Riwayat'), findsOneWidget);
+    expect(find.text('Profil & PR'), findsOneWidget);
   });
 }

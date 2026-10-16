@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../dashboard/presentation/dashboard_screen.dart';
 import '../history/presentation/history_screen.dart';
+import '../profile/presentation/profile_screen.dart';
 import '../recorder/presentation/recorder_screen.dart';
 
-/// App Shell utama dengan navigasi Bottom Navigation Bar bergaya Apple HIG / Strava Sports.
+/// App Shell utama dengan navigasi Bottom Navigation Bar 4 Menu bergaya Apple HIG / Strava Sports.
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -18,6 +19,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       GlobalKey<DashboardScreenState>();
   final GlobalKey<HistoryScreenState> _historyKey =
       GlobalKey<HistoryScreenState>();
+  final GlobalKey<ProfileScreenState> _profileKey =
+      GlobalKey<ProfileScreenState>();
 
   void _onTabSelected(int index) {
     setState(() {
@@ -28,12 +31,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _dashboardKey.currentState?.loadDashboardData();
     } else if (index == 2) {
       _historyKey.currentState?.loadActivities();
+    } else if (index == 3) {
+      _profileKey.currentState?.loadProfileData();
     }
   }
 
   void _onActivitySaved() {
     _dashboardKey.currentState?.loadDashboardData();
     _historyKey.currentState?.loadActivities();
+    _profileKey.currentState?.loadProfileData();
     // Beralih ke tab Riwayat untuk langsung melihat sesi yang baru disimpan
     _onTabSelected(2);
   }
@@ -53,6 +59,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           HistoryScreen(
             key: _historyKey,
+          ),
+          ProfileScreen(
+            key: _profileKey,
           ),
         ],
       ),
@@ -74,6 +83,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.format_list_bulleted_outlined),
             activeIcon: Icon(Icons.format_list_bulleted),
             label: 'Riwayat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil & PR',
           ),
         ],
       ),

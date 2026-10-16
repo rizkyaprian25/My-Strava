@@ -4,11 +4,15 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../contracts/activity_model.dart';
+import '../../../contracts/gear_model.dart';
 import '../../../contracts/location_point.dart';
 import '../../../contracts/sport_type.dart';
+import '../../../core/services/background_service.dart';
 import '../../../core/storage/activity_repository.dart';
+import '../../../core/storage/profile_gear_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/geo_calculator.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'save_activity_dialog.dart';
 
 /// Status siklus hidup mesin perekam aktivitas.
@@ -45,17 +49,37 @@ class _RecorderScreenState extends State<RecorderScreen> {
   LatLng? _currentLatLng;
   StreamSubscription<Position>? _positionStream;
 
+  // Pengaturan cerdas khas Strava
+  final bool _autoPauseEnabled = true;
+  int _lowSpeedCounter = 0;
+
   @override
   void initState() {
     super.initState();
     _checkPermissionsAndGetInitialPosition();
+    FlutterForegroundTask.addTaskDataCallback(_onReceiveTaskData);
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _positionStream?.cancel();
+    FlutterForegroundTask.removeTaskDataCallback(_onReceiveTaskData);
     super.dispose();
+  }
+
+  /// Menerima perintah tombol dari notifikasi lockscreen (Jeda, Lanjutkan, Selesai).
+  void _onReceiveTaskData(dynamic data) {
+    if (data is Map && data.containsKey('action')) {
+      final action = data['action'];
+      if (action == 'pause') {
+        _pauseRecording();
+      } else if (action == 'resume') {
+        _resumeRecording();
+      } else if (action == 'stop') {
+        _stopRecording();
+      }
+    }
   }
 
   /// Memeriksa izin GPS Android dan mengambil posisi awal atlet.
@@ -103,7 +127,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
     }
   }
 
-  /// Memulai sesi perekaman GPS baru.
+  /// Memulai sesi perekaman GPS baru dengan layanan background lockscreen.
   void _startRecording() async {
     final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied ||
@@ -111,6 +135,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
       await _checkPermissionsAndGetInitialPosition();
       return;
     }
+
+    // Minta izin notifikasi & pengecualian baterai Android
+    await BackgroundServiceManager.requestPermissions();
 
     setState(() {
       _state = RecorderState.recording;
@@ -121,7 +148,14 @@ class _RecorderScreenState extends State<RecorderScreen> {
       _elevationGainMeters = 0.0;
       _sessionStartTime = DateTime.now();
       _routePoints.clear();
+      _lowSpeedCounter = 0;
     });
+
+    // Jalankan Foreground Service agar tetap aktif saat layar mati
+    await BackgroundServiceManager.startService(
+      sportName: _selectedSport.displayName,
+      initialMetrics: '0.00 km • 00:00 • Pace: -:--',
+    );
 
     // Mulai timer hitungan waktu bergerak
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -129,6 +163,20 @@ class _RecorderScreenState extends State<RecorderScreen> {
         setState(() {
           _elapsedSeconds++;
         });
+
+        // Perbarui tampilan notifikasi di lockscreen secara konstan
+        final distKm = _totalDistanceMeters / 1000.0;
+        final paceStr = _calculatePace();
+        final calories = GeoCalculator.estimateCalories(
+          sportType: _selectedSport,
+          durationSeconds: _elapsedSeconds,
+        );
+
+        BackgroundServiceManager.updateNotification(
+          title: '${_selectedSport.displayName} • ${_formatElapsedTime(_elapsedSeconds)}',
+          text: '${distKm.toStringAsFixed(2)} km • Pace: $paceStr /km • $calories kcal',
+          isPaused: false,
+        );
       }
     });
 
@@ -141,6 +189,23 @@ class _RecorderScreenState extends State<RecorderScreen> {
     _positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
+      // Mekanisme Jeda Otomatis (Auto-Pause) saat atlet berhenti
+      if (_autoPauseEnabled) {
+        if (position.speed < 0.45) { // Di bawah 1.6 km/jam dianggap berhenti
+          _lowSpeedCounter++;
+          if (_lowSpeedCounter >= 4 && _state == RecorderState.recording) {
+            _pauseRecording();
+            _showToast('Jeda Otomatis aktif (Anda berhenti bergerak).');
+          }
+        } else {
+          _lowSpeedCounter = 0;
+          if (_state == RecorderState.paused) {
+            _resumeRecording();
+            _showToast('Melanjutkan otomatis (Gerakan terdeteksi).');
+          }
+        }
+      }
+
       if (_state != RecorderState.recording) return;
 
       final newPoint = LocationPoint(
@@ -195,6 +260,13 @@ class _RecorderScreenState extends State<RecorderScreen> {
       _state = RecorderState.paused;
       _currentSpeedKmh = 0.0;
     });
+
+    final distKm = _totalDistanceMeters / 1000.0;
+    BackgroundServiceManager.updateNotification(
+      title: '${_selectedSport.displayName} • DIJEDA',
+      text: '${distKm.toStringAsFixed(2)} km • ${_formatElapsedTime(_elapsedSeconds)}',
+      isPaused: true,
+    );
   }
 
   /// Melanjutkan sesi perekaman setelah dijeda.
@@ -202,12 +274,22 @@ class _RecorderScreenState extends State<RecorderScreen> {
     setState(() {
       _state = RecorderState.recording;
     });
+
+    final distKm = _totalDistanceMeters / 1000.0;
+    BackgroundServiceManager.updateNotification(
+      title: '${_selectedSport.displayName} • ${_formatElapsedTime(_elapsedSeconds)}',
+      text: '${distKm.toStringAsFixed(2)} km • Pace: ${_calculatePace()} /km',
+      isPaused: false,
+    );
   }
 
   /// Mengakhiri sesi dan menampilkan dialog simpan aktivitas.
   Future<void> _stopRecording() async {
     _timer?.cancel();
     _positionStream?.cancel();
+    await BackgroundServiceManager.stopService();
+
+    if (!mounted) return;
 
     if (_totalDistanceMeters < 50 && _elapsedSeconds < 15) {
       final discard = await showDialog<bool>(
@@ -263,8 +345,16 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
     if (savedActivity != null) {
       await _repository.saveActivity(savedActivity);
+
+      // Tambahkan akumulasi jarak tempuh ke perlengkapan default (sepatu/sepeda)
+      final gearType = savedActivity.sportType == SportType.ride
+          ? GearType.bike
+          : GearType.shoes;
+      await ProfileGearRepository()
+          .addMileageToDefaultGear(gearType, savedActivity.distanceMeters);
+
       if (mounted) {
-        _showToast('Aktivitas berhasil disimpan ke riwayat!');
+        _showToast('Aktivitas berhasil disimpan & perlengkapan diperbarui!');
         widget.onActivitySaved?.call();
       }
     }
