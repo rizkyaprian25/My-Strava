@@ -109,11 +109,13 @@ class _SaveActivityDialogState extends State<SaveActivityDialog> {
       final p1 = widget.routePoints[i - 1];
       final p2 = widget.routePoints[i];
 
-      final dist = GeoCalculator.calculateDistance(
+      final dist = GeoCalculator.calculateDistance3D(
         p1.latitude,
         p1.longitude,
+        p1.altitude,
         p2.latitude,
         p2.longitude,
+        p2.altitude,
       );
       accumulatedDistance += dist;
 

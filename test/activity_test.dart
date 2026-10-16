@@ -16,7 +16,7 @@ import 'package:my_strava/core/utils/route_gradient_helper.dart';
 
 void main() {
   group('GeoCalculator Tests', () {
-    test('Menghitung jarak Haversine dengan akurat antara dua titik', () {
+    test('Menghitung jarak WGS-84 Vincenty dengan akurasi tinggi antara dua titik', () {
       // Titik A: Monas Jakarta (-6.1754, 106.8272)
       // Titik B: Bundaran HI (-6.1950, 106.8230)
       final distance = GeoCalculator.calculateDistance(
@@ -26,9 +26,78 @@ void main() {
         106.8230,
       );
 
-      // Jarak aktual sekitar 2.2 km (2200 meter)
-      expect(distance, greaterThan(2000.0));
-      expect(distance, lessThan(2400.0));
+      // Jarak aktual sekitar 2.22 km (2220-2230 meter)
+      expect(distance, greaterThan(2200.0));
+      expect(distance, lessThan(2250.0));
+    });
+
+    test('calculateDistance3D memperhitungkan hipotenusa kemiringan kontur', () {
+      final flatDist = GeoCalculator.calculateDistance(
+        -6.1754,
+        106.8272,
+        -6.1764,
+        106.8272,
+      );
+
+      // Tanjakan 40 meter
+      final dist3D = GeoCalculator.calculateDistance3D(
+        -6.1754,
+        106.8272,
+        10.0,
+        -6.1764,
+        106.8272,
+        50.0,
+      );
+
+      expect(dist3D, greaterThan(flatDist));
+    });
+
+    test('filterAndCalculateDelta menolak jitter saat diam dan loncatan kecepatan mustahil', () {
+      final now = DateTime.now();
+      final p1 = LocationPoint(
+        latitude: -6.1754,
+        longitude: 106.8272,
+        altitude: 10.0,
+        speed: 0.2, // Kecepatan diam (< 0.4 m/s)
+        accuracy: 4.0,
+        timestamp: now,
+      );
+
+      // Jitter kecil 0.8 meter saat diam
+      final pJitter = LocationPoint(
+        latitude: -6.175405,
+        longitude: 106.827205,
+        altitude: 10.0,
+        speed: 0.1,
+        accuracy: 5.0,
+        timestamp: now.add(const Duration(seconds: 1)),
+      );
+
+      final jitterDelta = GeoCalculator.filterAndCalculateDelta(
+        prevPoint: p1,
+        newPoint: pJitter,
+        sportType: SportType.run,
+      );
+      // Harus ditolak (0 meter) agar jarak tidak bertambah sendiri saat atlet diam
+      expect(jitterDelta, equals(0.0));
+
+      // Loncatan satelit ekstrem (pindah 2 km dalam 1 detik)
+      final pSpike = LocationPoint(
+        latitude: -6.1950,
+        longitude: 106.8230,
+        altitude: 10.0,
+        speed: 15.0,
+        accuracy: 4.0,
+        timestamp: now.add(const Duration(seconds: 1)),
+      );
+
+      final spikeDelta = GeoCalculator.filterAndCalculateDelta(
+        prevPoint: p1,
+        newPoint: pSpike,
+        sportType: SportType.run,
+      );
+      // Harus ditolak (0 meter) karena melebihi batas fisik lari manusia
+      expect(spikeDelta, equals(0.0));
     });
 
     test('Estimasi kalori terbakar menghasilkan nilai logis', () {

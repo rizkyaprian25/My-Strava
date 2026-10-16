@@ -1,11 +1,12 @@
 import 'package:latlong2/latlong.dart';
 
-/// Titik koordinat GPS tunggal dari trek aktivitas.
+/// Titik koordinat GPS tunggal dari trek aktivitas dengan telemetri lengkap.
 class LocationPoint {
   final double latitude;
   final double longitude;
   final double altitude; // Elevasi dalam meter di atas permukaan laut
   final double speed; // Kecepatan instan dalam meter/detik
+  final double accuracy; // Akurasi horizontal GPS dalam meter (HDOP)
   final DateTime timestamp;
 
   const LocationPoint({
@@ -13,6 +14,7 @@ class LocationPoint {
     required this.longitude,
     required this.altitude,
     required this.speed,
+    this.accuracy = 0.0,
     required this.timestamp,
   });
 
@@ -29,6 +31,7 @@ class LocationPoint {
       longitude: (json['longitude'] as num).toDouble(),
       altitude: (json['altitude'] as num?)?.toDouble() ?? 0.0,
       speed: (json['speed'] as num?)?.toDouble() ?? 0.0,
+      accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0.0,
       timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }
@@ -40,6 +43,7 @@ class LocationPoint {
       'longitude': longitude,
       'altitude': altitude,
       'speed': speed,
+      'accuracy': accuracy,
       'timestamp': timestamp.toIso8601String(),
     };
   }

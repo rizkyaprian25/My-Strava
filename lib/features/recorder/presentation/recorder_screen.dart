@@ -216,6 +216,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
         longitude: position.longitude,
         altitude: position.altitude,
         speed: position.speed > 0 ? position.speed : 0.0,
+        accuracy: position.accuracy,
         timestamp: DateTime.now(),
       );
 
@@ -224,23 +225,26 @@ class _RecorderScreenState extends State<RecorderScreen> {
       setState(() {
         if (_routePoints.isNotEmpty) {
           final lastPoint = _routePoints.last;
-          final dist = GeoCalculator.calculateDistance(
-            lastPoint.latitude,
-            lastPoint.longitude,
-            newPoint.latitude,
-            newPoint.longitude,
+          // Kalkulasi jarak geodesik WGS-84 dan filter noise GPS persis algoritma Strava
+          final deltaDistance = GeoCalculator.filterAndCalculateDelta(
+            prevPoint: lastPoint,
+            newPoint: newPoint,
+            sportType: _selectedSport,
           );
 
-          // Filter anomali loncatan GPS (abaikan jika perpindahan > 50 meter per detik)
-          if (dist < 50.0 && dist > 1.5) {
-            _totalDistanceMeters += dist;
+          if (deltaDistance > 0.0) {
+            _totalDistanceMeters += deltaDistance;
 
-            // Hitung kenaikan elevasi kumulatif
+            // Hitung kenaikan elevasi kumulatif jika tanjakan nyata (> 0.3 meter)
             final altDiff = newPoint.altitude - lastPoint.altitude;
-            if (altDiff > 0.5) {
+            if (altDiff > 0.3 && altDiff < 30.0) {
               _elevationGainMeters += altDiff;
             }
+
+            _routePoints.add(newPoint);
           }
+        } else {
+          _routePoints.add(newPoint);
         }
 
         // Kecepatan dalam km/jam (meter/detik x 3.6)
@@ -249,7 +253,6 @@ class _RecorderScreenState extends State<RecorderScreen> {
           _maxSpeedKmh = _currentSpeedKmh;
         }
 
-        _routePoints.add(newPoint);
         _currentLatLng = newLatLng;
       });
 
