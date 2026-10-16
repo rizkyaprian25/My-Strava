@@ -48,4 +48,13 @@ enum SportType {
         return 6.0; // Mendaki medan alam
     }
   }
+
+  /// Konversi dari string ke SportType dengan fallback aman.
+  static SportType fromString(String val) {
+    return SportType.values.firstWhere(
+      (element) => element.name.toLowerCase() == val.toLowerCase(),
+      orElse: () => SportType.run,
+    );
+  }
 }
+

@@ -58,6 +58,9 @@ class ActivityModel {
     return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
   }
 
+  /// Alias untuk formattedDuration.
+  String get formattedDuration => durationFormatted;
+
   /// Deserialisasi dari JSON.
   factory ActivityModel.fromJson(Map<String, dynamic> json) {
     return ActivityModel(

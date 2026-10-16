@@ -1,12 +1,16 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_strava/contracts/activity_model.dart';
 import 'package:my_strava/contracts/gear_model.dart';
 import 'package:my_strava/contracts/km_split.dart';
 import 'package:my_strava/contracts/location_point.dart';
+import 'package:my_strava/contracts/map_style.dart';
 import 'package:my_strava/contracts/personal_record.dart';
+import 'package:my_strava/contracts/segment_model.dart';
 import 'package:my_strava/contracts/sport_type.dart';
 import 'package:my_strava/core/utils/geo_calculator.dart';
 import 'package:my_strava/core/utils/gpx_exporter.dart';
+import 'package:my_strava/core/utils/route_gradient_helper.dart';
 
 void main() {
   group('GeoCalculator Tests', () {
@@ -180,5 +184,108 @@ void main() {
       expect(restored.formattedTime, equals('20m 45s'));
     });
   });
+
+  group('SegmentModel & KOM Contract Tests', () {
+    test('Format waktu PB segmen dan pembaruan rekor baru', () {
+      final now = DateTime(2026, 10, 16, 8, 0);
+      final segment = SegmentModel(
+        id: 'seg-1',
+        name: 'Sprint Senayan 400m',
+        sportType: SportType.run,
+        startLat: -6.2185,
+        startLng: 106.8020,
+        endLat: -6.2150,
+        endLng: 106.8025,
+        distanceMeters: 400.0,
+        personalBestSeconds: 85, // 1m 25s
+        attemptsCount: 2,
+      );
+
+      expect(segment.distanceKm, equals(0.4));
+      expect(segment.formattedPB, equals('01:25'));
+
+      // Upayakan rekor baru yang lebih cepat: 78 detik (01:18)
+      final improved = segment.updateAttempt(78, now);
+      expect(improved.personalBestSeconds, equals(78));
+      expect(improved.formattedPB, equals('01:18'));
+      expect(improved.attemptsCount, equals(3));
+
+      // Upayakan rekor yang lebih lambat: 90 detik (PB tetap 78 detik)
+      final slower = improved.updateAttempt(90, now);
+      expect(slower.personalBestSeconds, equals(78));
+      expect(slower.attemptsCount, equals(4));
+
+      // Validasi serialisasi JSON
+      final json = improved.toJson();
+      final restored = SegmentModel.fromJson(json);
+      expect(restored.id, equals('seg-1'));
+      expect(restored.name, equals('Sprint Senayan 400m'));
+      expect(restored.personalBestSeconds, equals(78));
+    });
+  });
+
+  group('AppMapStyle & Tile Layers Tests', () {
+    test('Memastikan semua gaya peta memiliki URL template yang valid', () {
+      for (final style in AppMapStyle.values) {
+        expect(style.displayName, isNotEmpty);
+        expect(style.urlTemplate, contains('{z}'));
+        expect(style.urlTemplate, contains('{x}'));
+        expect(style.urlTemplate, contains('{y}'));
+        expect(style.icon, isNotNull);
+      }
+    });
+  });
+
+  group('RouteGradientHelper Tests', () {
+    test('Menghasilkan polyline solid dan gradien multi-segmen', () {
+      final now = DateTime.now();
+      final points = [
+        LocationPoint(
+          latitude: -6.1754,
+          longitude: 106.8272,
+          altitude: 10.0,
+          speed: 2.0,
+          timestamp: now,
+        ),
+        LocationPoint(
+          latitude: -6.1760,
+          longitude: 106.8275,
+          altitude: 15.0,
+          speed: 4.5,
+          timestamp: now.add(const Duration(seconds: 10)),
+        ),
+        LocationPoint(
+          latitude: -6.1770,
+          longitude: 106.8280,
+          altitude: 20.0,
+          speed: 3.0,
+          timestamp: now.add(const Duration(seconds: 20)),
+        ),
+      ];
+
+      // Test solid orange
+      final solidLines = RouteGradientHelper.generatePolylines(
+        points: points,
+        mode: RouteColorMode.solidOrange,
+      );
+      expect(solidLines.length, equals(1));
+      expect(solidLines.first.color, equals(const Color(0xFFFC5200)));
+
+      // Test speed gradient (3 titik menghasilkan 2 segmen bergradien)
+      final speedLines = RouteGradientHelper.generatePolylines(
+        points: points,
+        mode: RouteColorMode.speedGradient,
+      );
+      expect(speedLines.length, equals(2));
+
+      // Test elevation gradient (3 titik menghasilkan 2 segmen bergradien)
+      final elevationLines = RouteGradientHelper.generatePolylines(
+        points: points,
+        mode: RouteColorMode.elevationGradient,
+      );
+      expect(elevationLines.length, equals(2));
+    });
+  });
 }
+
 

@@ -6,12 +6,14 @@ import 'package:latlong2/latlong.dart';
 import '../../../contracts/activity_model.dart';
 import '../../../contracts/gear_model.dart';
 import '../../../contracts/location_point.dart';
+import '../../../contracts/map_style.dart';
 import '../../../contracts/sport_type.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/storage/activity_repository.dart';
 import '../../../core/storage/profile_gear_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/geo_calculator.dart';
+import '../../../core/widgets/map_layer_selector_button.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'save_activity_dialog.dart';
 
@@ -34,6 +36,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
   RecorderState _state = RecorderState.idle;
   SportType _selectedSport = SportType.run;
+  AppMapStyle _mapStyle = AppMapStyle.dark;
 
   // Data telemetri sesi berjalan
   Timer? _timer;
@@ -412,8 +415,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: _mapStyle.urlTemplate,
                 userAgentPackageName: 'com.mystrava.app',
+                maxZoom: 19,
               ),
               // Garis Trek Rute Olahraga (Warna Khas Strava Orange)
               if (polylinePoints.length > 1)
@@ -564,21 +568,31 @@ class _RecorderScreenState extends State<RecorderScreen> {
                         ),
                       ),
 
-                    // Tombol Kunci Posisi / Center GPS
-                    FloatingActionButton.small(
-                      heroTag: 'recenter_gps',
-                      backgroundColor: AppTheme.cardSurface,
-                      onPressed: () {
-                        if (_currentLatLng != null) {
-                          _mapController.move(_currentLatLng!, 17.0);
-                        } else {
-                          _checkPermissionsAndGetInitialPosition();
-                        }
-                      },
-                      child: const Icon(
-                        Icons.my_location,
-                        color: AppTheme.stravaOrange,
-                      ),
+                    Row(
+                      children: [
+                        MapLayerSelectorButton(
+                          currentStyle: _mapStyle,
+                          onStyleChanged: (newStyle) {
+                            setState(() => _mapStyle = newStyle);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        FloatingActionButton.small(
+                          heroTag: 'recenter_gps',
+                          backgroundColor: AppTheme.cardSurface,
+                          onPressed: () {
+                            if (_currentLatLng != null) {
+                              _mapController.move(_currentLatLng!, 17.0);
+                            } else {
+                              _checkPermissionsAndGetInitialPosition();
+                            }
+                          },
+                          child: const Icon(
+                            Icons.my_location,
+                            color: AppTheme.stravaOrange,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

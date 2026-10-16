@@ -19,6 +19,9 @@ class LocationPoint {
   /// Mengonversi ke tipe data koordinat LatLng untuk rendering flutter_map.
   LatLng toLatLng() => LatLng(latitude, longitude);
 
+  /// Kecepatan instan dalam km/jam.
+  double get speedKmh => speed * 3.6;
+
   /// Konversi dari JSON ke objek LocationPoint.
   factory LocationPoint.fromJson(Map<String, dynamic> json) {
     return LocationPoint(
